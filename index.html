@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#070b18">
+<title>NEXUS VAULT｜私人密碼庫</title>
+<style>
+:root{
+  --bg:#070b18;--panel:#101a30;--blue:#38bdf8;
+  --cyan:#22d3ee;--purple:#a78bfa;--text:#e8f3ff;
+  --muted:#91a6c5;--border:rgba(91,190,255,.23);
+  --red:#fb7185;--green:#34d399;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  background:radial-gradient(ellipse at 15% 0%,#12375a 0%,transparent 42%),
+  radial-gradient(ellipse at 100% 45%,#211544 0%,transparent 38%),var(--bg);
+}
+button,input,select{font:inherit}
+button{cursor:pointer;touch-action:manipulation}
+.hidden{display:none!important}
+.wrap{width:min(100%,950px);margin:auto;padding:18px 14px 40px}
+.brand{display:flex;align-items:center;gap:12px;margin:8px 0 26px}
+.logo{
+ width:48px;height:48px;border-radius:15px;display:grid;place-items:center;
+ font-size:25px;background:linear-gradient(135deg,#0284c7,#7c3aed);
+ box-shadow:0 0 28px #0ea5e955
+}
+.brand h1{font-size:20px;letter-spacing:2px;margin:0}
+.brand p{font-size:10px;letter-spacing:2px;color:var(--cyan);margin:5px 0 0}
+.panel{
+ background:linear-gradient(145deg,rgba(20,34,59,.97),rgba(10,17,34,.97));
+ border:1px solid var(--border);border-radius:19px;padding:19px;margin-bottom:17px;
+ box-shadow:0 12px 35px #0003,inset 0 1px #ffffff08;
+}
+.login{max-width:450px;margin:30px auto}
+.eyebrow{color:var(--cyan);font-size:11px;letter-spacing:2px;font-weight:800}
+h2{font-size:21px;margin:10px 0}
+.sub{color:var(--muted);font-size:13px;line-height:1.8}
+label{display:block;font-size:13px;color:#b9d6f5;margin:16px 0 7px}
+input,select{
+ width:100%;min-width:0;color:var(--text);background:#080f20;
+ border:1px solid #284365;border-radius:11px;padding:13px 12px;
+ min-height:46px;outline:none;
+}
+input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #22d3ee18}
+select option{background:#101a30;color:white}
+.btn{
+ border:1px solid var(--border);border-radius:11px;padding:11px 14px;
+ color:var(--text);background:#182b47;font-weight:700;min-height:43px;
+}
+.btn:active{transform:scale(.98)}
+.primary{background:linear-gradient(110deg,#0284c7,#2563eb);border-color:#38bdf8;color:white}
+.danger{color:#fecdd3;background:#4a1726;border-color:#87364a}
+.full{width:100%;margin-top:20px}
+.error{color:#fda4af;font-size:13px;line-height:1.6;min-height:18px;margin-top:10px}
+.notice{
+ margin-top:19px;padding:12px;border-radius:10px;background:#f59e0b0b;
+ border:1px solid #f59e0b30;color:#fcd69a;font-size:12px;line-height:1.8
+}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:18px}
+.stat{padding:13px 9px;border:1px solid var(--border);border-radius:12px;background:#091426aa}
+.num{font-size:23px;font-weight:800;color:var(--cyan)}
+.cap{font-size:11px;color:var(--muted);margin-top:5px}
+.section-title{font-size:16px;margin:0 0 7px}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 13px}
+.wide{grid-column:1/-1}
+.help{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.7}
+.form-actions,.data-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:17px}
+.form-actions .btn,.data-actions .btn{flex:1}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:16px 0}
+.toolbar input{flex:1;min-width:145px}
+.toolbar select{width:auto;flex:0 0 150px}
+.record{border:1px solid var(--border);border-radius:15px;padding:14px;margin-top:12px;background:#091426a8}
+.record-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.record-title{font-size:32px;font-weight:800;line-height:1.3;overflow-wrap:anywhere}
+.record-date{font-size:10px;color:var(--muted);margin-top:5px}
+.tag{color:var(--cyan);border:1px solid #22d3ee44;background:#22d3ee0c;border-radius:7px;padding:4px 7px;font-size:10px}
+.data-row{margin-top:11px;padding:10px;border-radius:9px;background:#ffffff05;border:1px solid #ffffff0b;min-width:0}
+.data-label{font-size:10px;color:var(--muted);margin-bottom:6px}
+.data-value{font-size:13px;line-height:1.7;overflow-wrap:anywhere;white-space:pre-wrap}
+.masked{letter-spacing:2px;color:#8da5c5}
+.smallbtn{padding:6px 10px;min-height:32px;font-size:11px;margin-top:8px}
+.data-actions .btn{padding:9px 7px;font-size:12px;min-width:70px}
+.empty{text-align:center;padding:30px 10px;color:var(--muted);line-height:2}
+.footer{text-align:center;color:#647a99;font-size:10px;letter-spacing:1px;margin-top:24px}
+.toast{
+ position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+ max-width:90%;padding:12px 17px;border-radius:12px;background:#12372f;
+ border:1px solid #34d39977;color:#a7f3d0;box-shadow:0 8px 30px #0006;
+ z-index:10;font-size:13px
+}
+.link-btn{background:none;border:none;color:var(--cyan);padding:0;font-size:13px;cursor:pointer;text-decoration:underline;margin-top:10px;display:inline-block}
+.detail-table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px}
+.detail-table th,.detail-table td{border:1px solid var(--border);padding:10px;text-align:left;overflow-wrap:anywhere}
+.detail-table th{background:#091426;color:var(--cyan)}
+.detail-table tr:nth-child(even){background:#ffffff03}
+@media(max-width:520px){
+ .wrap{padding:13px 11px 32px}.panel{padding:15px}
+ .brand h1{font-size:18px}.field-grid{grid-template-columns:1fr}
+ .wide{grid-column:auto}.toolbar select{flex:1}
+ .stats{gap:6px}.stat{padding:11px 7px}.num{font-size:20px}
+ .record-title{font-size:24px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="brand">
+  <div class="logo">⌘</div>
+  <div>
+    <h1>NEXUS VAULT</h1>
+    <p>PERSONAL PASSWORD STORAGE</p>
+  </div>
+</header>
+
+<!-- 登入及首次設定 -->
+<section id="loginScreen" class="panel login">
+  <div class="eyebrow">SECURE ACCESS / 01</div>
+  <h2 id="loginTitle">建立你的私人密碼庫</h2>
+  <p class="sub" id="loginDescription">首次使用，請自行設定密碼並確認。</p>
+
+  <form id="loginForm">
+    <div id="setupFields">
+      <label for="newPassword">自行設定密碼（至少 8 個字元）</label>
+      <input id="newPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="設定你自己的密碼">
+
+      <label for="confirmPassword">再次輸入密碼</label>
+      <input id="confirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="再次輸入相同密碼">
+
+      <label for="setupEmail">備份 Email（用於忘記密碼找回）</label>
+      <input id="setupEmail" type="email" placeholder="example@email.com">
+    </div>
+
+    <div id="loginFields" class="hidden">
+      <label for="loginPassword">登入密碼</label>
+      <input id="loginPassword" type="password" maxlength="128" autocomplete="current-password" placeholder="輸入你設定的密碼">
+    </div>
+
+    <div id="forgotFields" class="hidden">
+      <label for="forgotEmail">請輸入您的備份 Email</label>
+      <input id="forgotEmail" type="email" placeholder="輸入當初設定的 Email">
+
+      <label for="resetPassword">新密碼（至少 8 個字元）</label>
+      <input id="resetPassword" type="password" minlength="8" maxlength="128" placeholder="設定新密碼">
+    </div>
+
+    <label for="school" id="schoolLabel">指定學校驗證</label>
+    <select id="school" required>
+      <option value="">請選擇學校</option>
+      <option>歸仁國小</option>
+      <option>深坑國小</option>
+      <option>崇文國小</option>
+      <option>仁德國小</option>
+      <option>興隆國小</option>
+      <option>文山國小</option>
+      <option>泰山國小</option>
+      <option>台中國小</option>
+      <option>大安國小</option>
+      <option>永康國小</option>
+      <option>忠孝國小</option>
+      <option>博愛國小</option>
+      <option>民生國小</option>
+      <option>建國國小</option>
+      <option>光明國小</option>
+      <option>新光國小</option>
+      <option>中正國小</option>
+    </select>
+
+    <button class="btn primary full" id="loginSubmit" type="submit">
+      設定密碼並進入
+    </button>
+    
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <button type="button" id="forgotToggleBtn" class="link-btn hidden">忘記密碼？</button>
+      <button type="button" id="backToLoginBtn" class="link-btn hidden">返回登入</button>
+    </div>
+
+    <div id="loginError" class="error" role="alert"></div>
+  </form>
+
+  <div class="notice">
+    ⚠ 本機版本：資料保存在目前裝置的瀏覽器中。請勿清除網站資料，
+    也不要把未加密的敏感密碼交給他人。
+  </div>
+</section>
+
+<!-- 密碼庫主畫面 -->
+<main id="appScreen" class="hidden">
+  <section class="panel">
+    <div class="topline">
+      <div>
+        <div class="eyebrow">SYSTEM ONLINE</div>
+        <h2>我的私人資料庫</h2>
+        <div class="sub">本機保存・隨時搜尋・自行管理</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button id="viewDetailBtn" class="btn primary" type="button">明細總表</button>
+        <button id="lockBtn" class="btn" type="button">鎖定系統</button>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="num" id="totalCount">0</div><div class="cap">全部項目</div></div>
+      <div class="stat"><div class="num" id="todayCount">0</div><div class="cap">今日新增</div></div>
+      <div class="stat"><div class="num">LOCAL</div><div class="cap">本機資料庫</div></div>
+    </div>
+  </section>
+
+  <!-- 修改密碼區塊 -->
+  <section class="panel">
+    <div class="eyebrow">SECURITY / 02</div>
+    <h2 class="section-title">修改登入密碼</h2>
+    <p class="sub">必須輸入舊密碼及正確指定學校才可更換新密碼。</p>
+    <form id="changePasswordForm">
+      <div class="field-grid">
+        <div>
+          <label for="oldPassword">舊密碼</label>
+          <input id="oldPassword" type="password" placeholder="輸入目前密碼" required>
+        </div>
+        <div>
+          <label for="changeSchool">指定學校驗證</label>
+          <select id="changeSchool" required>
+            <option value="">請選擇學校</option>
+            <option>歸仁國小</option>
+            <option>深坑國小</option>
+            <option>崇文國小</option>
+            <option>仁德國小</option>
+            <option>興隆國小</option>
+            <option>文山國小</option>
+            <option>泰山國小</option>
+            <option>台中國小</option>
+            <option>大安國小</option>
+            <option>永康國小</option>
+            <option>忠孝國小</option>
+            <option>博愛國小</option>
+            <option>民生國小</option>
+            <option>建國國小</option>
+            <option>光明國小</option>
+            <option>新光國小</option>
+            <option>中正國小</option>
+          </select>
+        </div>
+        <div>
+          <label for="changeNewPassword">新密碼（至少 8 個字元）</label>
+          <input id="changeNewPassword" type="password" minlength="8" maxlength="128" placeholder="輸入新密碼" required>
+        </div>
+        <div>
+          <label for="changeNewEmail">更新備份 Email（選填）</label>
+          <input id="changeNewEmail" type="email" placeholder="留空則保留原 Email">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn primary">確認修改密碼</button>
+      </div>
+      <div id="changePwError" class="error" role="alert"></div>
+    </form>
+  </section>
+
+  <section class="panel" id="editorPanel">
+    <div class="eyebrow">DATA MANAGEMENT / 03</div>
+    <h2 class="section-title" id="editorTitle">＋ 新增保存項目</h2>
+    <p class="sub">四個欄位可輸入中文、英文、數字及各種符號。</p>
+
+    <form id="recordForm">
+      <input type="hidden" id="editId" value="">
+      <div class="field-grid">
+        <div class="wide">
+          <label for="itemName">項目名稱 *</label>
+          <input id="itemName" maxlength="200" placeholder="例如：電子郵件、網站名稱" required>
+        </div>
+        <div>
+          <label for="field1">第一欄</label>
+          <input id="field1" placeholder="輸入內容" autocomplete="off">
+        </div>
+        <div>
+          <label for="field2">第二欄</label>
+          <input id="field2" placeholder="輸入內容" autocomplete="off">
+        </div>
+        <div class="wide">
+          <label for="field3">第三欄</label>
+          <input id="field3" placeholder="輸入內容，儲存時自動附加日期碼" autocomplete="off">
+          <div class="help">
+            儲存時會在內容後面附加 2 位隨機數字、當日年月日及 4 位隨機數字，例如：
+            ABC95202610184827。此功能是附加識別碼，不是密碼加密。
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn primary" id="saveBtn">儲存資料</button>
+        <button type="button" class="btn" id="cancelBtn">清除／取消編輯</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="eyebrow">YOUR COLLECTION / 04</div>
+    <h2 class="section-title">已保存的項目</h2>
+    <p class="sub">可搜尋、排列、查看、複製、修改及刪除資料。</p>
+    <div class="toolbar">
+      <input id="searchInput" type="search" placeholder="⌕ 搜尋項目或資料內容">
+      <select id="sortSelect" aria-label="排列方式">
+        <option value="newest">最新更新優先</option>
+        <option value="oldest">最早建立優先</option>
+        <option value="az">項目名稱 A－Z</option>
+        <option value="za">項目名稱 Z－A</option>
+      </select>
+    </div>
+    <div id="recordList"></div>
+  </section>
+</main>
+
+<!-- 明細總表頁面 -->
+<main id="detailScreen" class="hidden">
+  <section class="panel">
+    <div class="topline">
+      <div>
+        <div class="eyebrow">ALL DETAILS / REPORT</div>
+        <h2>全部項目的詳細總表</h2>
+        <div class="sub">完整明細檢視與匯出功能</div>
+      </div>
+      <button id="backToAppBtn" class="btn primary" type="button">返回主畫面</button>
+    </div>
+    
+    <div class="data-actions" style="margin-top:20px">
+      <button id="printBtn" class="btn" type="button">🖨️ 列印／儲存為 PDF</button>
+      <button id="exportJsonBtn" class="btn" type="button">💾 備份匯出 JSON</button>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="detail-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>項目名稱</th>
+            <th>第一欄</th>
+            <th>第二欄</th>
+            <th>第三欄（含識別碼）</th>
+            <th>建立時間</th>
+          </tr>
+        </thead>
+        <tbody id="detailTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">NEXUS VAULT · PERSONAL LOCAL STORAGE</footer>
+</div>
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script>
+"use strict";
+
+const AUTH_KEY = "nexus_vault_auth_v1";
+const STORAGE_KEY = "nexus_vault_records_v1";
+const SCHOOL_ANSWER = "深坑國小";
+
+const $ = id => document.getElementById(id);
+let records = [];
+let showSecrets = Object.create(null);
+let toastTimer = null;
+let loginMode = "normal";
+
+async function hashPassword(password, salt){
+  if(!crypto.subtle || !crypto.getRandomValues){
+    throw new Error("此環境不支援 Web Crypto");
+  }
+  const data = new TextEncoder().encode(salt + ":" + password);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash))
+    .map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+function getAuth(){
+  try{
+    const data = JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
+    if(data && typeof data.salt === "string" &&
+       typeof data.passwordHash === "string") return data;
+    return null;
+  }catch(e){
+    return null;
+  }
+}
+
+function refreshLoginScreen(){
+  const auth = getAuth();
+  const configured = !!auth;
+
+  $("setupFields").classList.toggle("hidden", configured || loginMode === "forgot");
+  $("loginFields").classList.toggle("hidden", !configured || loginMode === "forgot");
+  $("forgotFields").classList.toggle("hidden", loginMode !== "forgot");
+  $("forgotToggleBtn").classList.toggle("hidden", !configured || loginMode === "forgot");
+  $("backToLoginBtn").classList.toggle("hidden", loginMode !== "forgot");
+
+  if(!configured){
+    $("loginTitle").textContent = "建立你的私人密碼庫";
+    $("loginDescription").textContent = "首次使用，請自行設定密碼、備份 Email 並確認學校。";
+    $("loginSubmit").textContent = "設定密碼並進入";
+  }else if(loginMode === "forgot"){
+    $("loginTitle").textContent = "重設登入密碼";
+    $("loginDescription").textContent = "請輸入備份 Email 及驗證學校來重設密碼。";
+    $("loginSubmit").textContent = "確認重設密碼";
+  }else{
+    $("loginTitle").textContent = "歡迎回到私人密碼庫";
+    $("loginDescription").textContent = "請輸入自訂密碼，並選擇指定學校。";
+    $("loginSubmit").textContent = "解鎖私人資料庫　→";
+  }
+}
+
+function randomSalt(){
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+$("forgotToggleBtn").addEventListener("click", () => {
+  loginMode = "forgot";
+  $("loginError").textContent = "";
+  refreshLoginScreen();
+});
+
+$("backToLoginBtn").addEventListener("click", () => {
+  loginMode = "normal";
+  $("loginError").textContent = "";
+  refreshLoginScreen();
+});
+
+$("loginForm").addEventListener("submit", async function(e){
+  e.preventDefault();
+  const error = $("loginError");
+  error.textContent = "";
+
+  if($("school").value !== SCHOOL_ANSWER){
+    error.textContent = "登入資訊有誤，請重新輸入。";
+    return;
+  }
+
+  const button = $("loginSubmit");
+  button.disabled = true;
+
+  try{
+    const auth = getAuth();
+
+    if(!auth){
+      const password = $("newPassword").value;
+      const confirmPassword = $("confirmPassword").value;
+      const email = $("setupEmail").value.trim();
+
+      if(password.length < 8){
+        error.textContent = "密碼至少需要 8 個字元。";
+        button.disabled = false;
+        return;
+      }
+
+      if(password !== confirmPassword){
+        error.textContent = "兩次輸入的密碼不一致。";
+        button.disabled = false;
+        return;
+      }
+
+      const salt = randomSalt();
+      const passwordHash = await hashPassword(password, salt);
+
+      localStorage.setItem(AUTH_KEY, JSON.stringify({
+        salt: salt,
+        passwordHash: passwordHash,
+        email: email
+      }));
+
+      $("newPassword").value = "";
+      $("confirmPassword").value = "";
+      $("setupEmail").value = "";
+      refreshLoginScreen();
+      enterApp();
+      showToast("自訂密碼已設定並保存");
+      button.disabled = false;
+      return;
+    }
+
+    if(loginMode === "forgot"){
+      const emailInput = $("forgotEmail").value.trim();
+      const newPass = $("resetPassword").value;
+
+      if(!auth.email || emailInput.toLowerCase() !== auth.email.toLowerCase()){
+        error.textContent = "登入資訊有誤，請重新輸入。";
+        button.disabled = false;
+        return;
+      }
+
+      if(newPass.length < 8){
+        error.textContent = "新密碼至少需要 8 個字元。";
+        button.disabled = false;
+        return;
+      }
+
+      const salt = randomSalt();
+      const passwordHash = await hashPassword(newPass, salt);
+
+      localStorage.setItem(AUTH_KEY, JSON.stringify({
+        salt: salt,
+        passwordHash: passwordHash,
+        email: auth.email
+      }));
+
+      $("forgotEmail").value = "";
+      $("resetPassword").value = "";
+      loginMode = "normal";
+      refreshLoginScreen();
+      error.style.color = "var(--green)";
+      error.textContent = "密碼已成功重設，請使用新密碼登入。";
+      button.disabled = false;
+      return;
+    }
+
+    const password = $("loginPassword").value;
+    const passwordHash = await hashPassword(password, auth.salt);
+
+    if(passwordHash !== auth.passwordHash){
+      error.textContent = "登入資訊有誤，請重新輸入。";
+      button.disabled = false;
+      return;
+    }
+
+    $("loginPassword").value = "";
+    enterApp();
+
+  }catch(err){
+    error.textContent = "系統處理發生錯誤，請稍後再試。";
+  }finally{
+    button.disabled = false;
+  }
+});
+
+/* ===== 修改密碼功能 ===== */
+$("changePasswordForm").addEventListener("submit", async function(e){
+  e.preventDefault();
+  const error = $("changePwError");
+  error.textContent = "";
+
+  if($("changeSchool").value !== SCHOOL_ANSWER){
+    error.textContent = "舊密碼或指定學校驗證錯誤。";
+    return;
+  }
+
+  const auth = getAuth();
+  const oldPass = $("oldPassword").value;
+  const newPass = $("changeNewPassword").value;
+  const newEmail = $("changeNewEmail").value.trim();
+
+  try{
+    const oldHash = await hashPassword(oldPass, auth.salt);
+    if(oldHash !== auth.passwordHash){
+      error.textContent = "舊密碼錯誤，請重新輸入。";
+      return;
+    }
+
+    if(newPass.length < 8){
+      error.textContent = "新密碼至少需要 8 個字元。";
+      return;
+    }
+
+    const salt = randomSalt();
+    const newHash = await hashPassword(newPass, salt);
+
+    localStorage.setItem(AUTH_KEY, JSON.stringify({
+      salt: salt,
+      passwordHash: newHash,
+      email: newEmail ? newEmail : auth.email
+    }));
+
+    $("oldPassword").value = "";
+    $("changeNewPassword").value = "";
+    $("changeNewEmail").value = "";
+    $("changeSchool").value = "";
+    showToast("密碼已成功修改！");
+  }catch(err){
+    error.textContent = "修改密碼失敗。";
+  }
+});
+
+/* ===== 資料庫 ===== */
+function loadRecords(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    records = Array.isArray(parsed)
+      ? parsed.filter(r => r && typeof r.id === "string" && typeof r.name === "string")
+      : [];
+  }catch(e){
+    records = [];
+  }
+}
+
+function persist(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    return true;
+  }catch(e){
+    alert("儲存失敗，請檢查裝置儲存空間。");
+    return false;
+  }
+}
+
+function enterApp(){
+  $("loginScreen").classList.add("hidden");
+  $("appScreen").classList.remove("hidden");
+  $("detailScreen").classList.add("hidden");
+  loadRecords();
+  renderRecords();
+  window.scrollTo(0,0);
+}
+
+$("lockBtn").addEventListener("click", function(){
+  resetForm();
+  showSecrets = Object.create(null);
+  $("appScreen").classList.add("hidden");
+  $("detailScreen").classList.add("hidden");
+  $("loginScreen").classList.remove("hidden");
+  $("school").value = "";
+  $("loginPassword").value = "";
+  $("loginError").textContent = "";
+  loginMode = "normal";
+  refreshLoginScreen();
+  window.scrollTo(0,0);
+});
+
+function resetForm(){
+  $("recordForm").reset();
+  $("editId").value = "";
+  $("editorTitle").textContent = "＋ 新增保存項目";
+  $("saveBtn").textContent = "儲存資料";
+}
+
+$("cancelBtn").addEventListener("click", resetForm);
+
+function todayStamp(){
+  const d = new Date();
+  return String(d.getFullYear()) +
+    String(d.getMonth()+1).padStart(2,"0") +
+    String(d.getDate()).padStart(2,"0");
+}
+
+function makeId(){
+  return "rec_" + Date.now().toString(36) + "_" +
+    Math.random().toString(36).slice(2,10);
+}
+
+function escapeHTML(value){
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",
+    '"':"&quot;","'":"&#39;"
+  })[ch]);
+}
+
+function showToast(message){
+  $("toast").textContent = message;
+  $("toast").classList.remove("hidden");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(
+    () => $("toast").classList.add("hidden"), 2300
+  );
+}
+
+/* ===== 新增與修改 ===== */
+$("recordForm").addEventListener("submit", function(e){
+  e.preventDefault();
+
+  const name = $("itemName").value.trim();
+  if(!name){
+    showToast("請先輸入項目名稱");
+    $("itemName").focus();
+    return;
+  }
+
+  const editId = $("editId").value;
+  const existing = editId ? records.find(r => r.id === editId) : null;
+  const now = new Date().toISOString();
+  const base3 = $("field3").value;
+  let final3 = "";
+
+  if(base3 !== ""){
+    if(existing && base3 === (existing.field3Base ?? "")){
+      final3 = existing.field3 ?? "";
+    }else{
+      const prefix2 = String(Math.floor(Math.random() * 100)).padStart(2, "0");
+      const suffix4 = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+      final3 = base3 + prefix2 + todayStamp() + suffix4;
+    }
+  }
+
+  if(existing){
+    const updated = {
+      ...existing,
+      name: name,
+      field1: $("field1").value,
+      field2: $("field2").value,
+      field3: final3,
+      field3Base: base3,
+      updatedAt: now
+    };
+    records = records.map(r => r.id === editId ? updated : r);
+  }else{
+    records.unshift({
+      id: makeId(),
+      name: name,
+      field1: $("field1").value,
+      field2: $("field2").value,
+      field3: final3,
+      field3Base: base3,
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+
+  if(!persist()){
+    loadRecords();
+    renderRecords();
+    return;
+  }
+
+  resetForm();
+  renderRecords();
+  showToast(existing ? "資料已成功更改" : "新資料已成功保存");
+});
+
+function formatDate(iso){
+  if(!iso) return "時間不明";
+  const d = new Date(iso);
+  if(Number.isNaN(d.getTime())) return "時間不明";
+  return d.toLocaleString("zh-TW",{hour12:false});
+}
+
+function getVisibleRecords(){
+  const query = $("searchInput").value.trim().toLowerCase();
+  const list = records.filter(r =>
+    [r.name, r.field1, r.field2, r.field3]
+      .join(" ").toLowerCase().includes(query)
+  );
+
+  const sort = $("sortSelect").value;
+  if(sort === "newest"){
+    list.sort((a,b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
+  }else if(sort === "oldest"){
+    list.sort((a,b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
+  }else if(sort === "az"){
+    list.sort((a,b) => a.name.localeCompare(b.name,"zh-Hant"));
+  }else if(sort === "za"){
+    list.sort((a,b) => b.name.localeCompare(a.name,"zh-Hant"));
+  }
+  return list;
+}
+
+function dataRow(label,value,id,key){
+  const text = String(value ?? "");
+  if(!text){
+    return `<div class="data-row">
+      <div class="data-label">${label}</div>
+      <div class="data-value" style="color:#647a99">（空白）</div>
+    </div>`;
+  }
+
+  const secretKey = id + "_" + key;
+  const visible = !!showSecrets[secretKey];
+
+  return `<div class="data-row">
+    <div class="data-label">${label}</div>
+    <div class="data-value ${visible ? "" : "masked"}">${
+      visible ? escapeHTML(text) : "••••••••••••"
+    }</div>
+    <button class="btn smallbtn" type="button" data-action="toggle" data-id="${escapeHTML(id)}" data-key="${key}">${visible ? "隱藏內容" : "顯示內容"}</button>
+    <button class="btn smallbtn" type="button" data-action="copy" data-id="${escapeHTML(id)}" data-key="${key}">複製欄位</button>
+  </div>`;
+}
+
+function renderRecords(){
+  const list = getVisibleRecords();
+  $("totalCount").textContent = records.length;
+
+  const today = todayStamp();
+  $("todayCount").textContent = records.filter(r =>
+    String(r.createdAt || "").slice(0,10).replace(/-/g,"") === today
+  ).length;
+
+  if(list.length === 0){
+    $("recordList").innerHTML = `<div class="empty">
+      <div style="font-size:34px">⌕</div>
+      ${records.length ? "找不到符合條件的項目" : "目前尚無保存資料"}<br>
+      <span style="font-size:12px">請使用上方表單新增第一筆資料。</span>
+    </div>`;
+    return;
+  }
+
+  $("recordList").innerHTML = list.map((r,index) => `
+    <article class="record">
+      <div class="record-head">
+        <div style="min-width:0">
+          <div class="record-title">${escapeHTML(r.name)}</div>
+          <div class="record-date">建立：${escapeHTML(formatDate(r.createdAt))}</div>
+          ${r.updatedAt && r.updatedAt !== r.createdAt
+            ? `<div class="record-date">更新：${escapeHTML(formatDate(r.updatedAt))}</div>`
+            : ""}
+        </div>
+        <span class="tag">#${index+1}</span>
+      </div>
+      ${dataRow("第一欄",r.field1,r.id,"field1")}
+      ${dataRow("第二欄",r.field2,r.id,"field2")}
+      ${dataRow("第三欄（含日期碼）",r.field3,r.id,"field3")}
+      <div class="data-actions">
+        <button class="btn primary" type="button" data-action="edit" data-id="${escapeHTML(r.id)}">✎ 更改</button>
+        <button class="btn" type="button" data-action="copyall" data-id="${escapeHTML(r.id)}">複製整筆</button>
+        <button class="btn danger" type="button" data-action="delete" data-id="${escapeHTML(r.id)}">刪除</button>
+      </div>
+    </article>
+  `).join("");
+}
+
+/* ===== 明細總表頁面操作 ===== */
+$("viewDetailBtn").addEventListener("click", () => {
+  $("appScreen").classList.add("hidden");
+  $("detailScreen").classList.remove("hidden");
+  renderDetailTable();
+  window.scrollTo(0,0);
+});
+
+$("backToAppBtn").addEventListener("click", () => {
+  $("detailScreen").classList.add("hidden");
+  $("appScreen").classList.remove("hidden");
+  renderRecords();
+  window.scrollTo(0,0);
+});
+
+function renderDetailTable(){
+  const tbody = $("detailTableBody");
+  if(records.length === 0){
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:30px">目前尚無資料</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = records.map((r, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td><strong>${escapeHTML(r.name)}</strong></td>
+      <td>${escapeHTML(r.field1 || "（空白）")}</td>
+      <td>${escapeHTML(r.field2 || "（空白）")}</td>
+      <td>${escapeHTML(r.field3 || "（空白）")}</td>
+      <td>${escapeHTML(formatDate(r.createdAt))}</td>
+    </tr>
+  `).join("");
+}
+
+$("printBtn").addEventListener("click", () => {
+  window.print();
+});
+
+$("exportJsonBtn").addEventListener("click", () => {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
+  const dlAnchor = document.createElement('a');
+  dlAnchor.setAttribute("href", dataStr);
+  dlAnchor.setAttribute("download", "nexus_vault_backup_" + todayStamp() + ".json");
+  document.body.appendChild(dlAnchor);
+  dlAnchor.click();
+  dlAnchor.remove();
+  showToast("已成功匯出備份檔案");
+});
+
+/* ===== 資料操作 ===== */
+$("recordList").addEventListener("click", async function(e){
+  const button = e.target.closest("button[data-action]");
+  if(!button) return;
+
+  const id = button.dataset.id;
+  const action = button.dataset.action;
+  const record = records.find(r => r.id === id);
+  if(!record) return;
+
+  if(action === "toggle"){
+    const key = id + "_" + button.dataset.key;
+    showSecrets[key] = !showSecrets[key];
+    renderRecords();
+    return;
+  }
+
+  if(action === "copy"){
+    await copyText(record[button.dataset.key] ?? "");
+    return;
+  }
+
+  if(action === "copyall"){
+    await copyText([
+      "項目：" + record.name,
+      "第一欄：" + (record.field1 ?? ""),
+      "第二欄：" + (record.field2 ?? ""),
+      "第三欄：" + (record.field3 ?? "")
+    ].join("\n"));
+    return;
+  }
+
+  if(action === "edit"){
+    $("editId").value = record.id;
+    $("itemName").value = record.name;
+    $("field1").value = record.field1 ?? "";
+    $("field2").value = record.field2 ?? "";
+    $("field3").value = record.field3Base ?? record.field3 ?? "";
+    $("editorTitle").textContent = "✎ 更改保存項目";
+    $("saveBtn").textContent = "儲存更改";
+    $("editorPanel").scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+
+  if(action === "delete"){
+    if(!confirm("確定永久刪除「" + record.name + "」嗎？此操作無法復原。")){
+      return;
+    }
+
+    const oldRecords = records.slice();
+    records = records.filter(r => r.id !== id);
+
+    if(!persist()){
+      records = oldRecords;
+      renderRecords();
+      return;
+    }
+
+    delete showSecrets[id + "_field1"];
+    delete showSecrets[id + "_field2"];
+    delete showSecrets[id + "_field3"];
+    renderRecords();
+    showToast("資料已刪除");
+  }
+});
+
+async function copyText(text){
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(String(text));
+    }else{
+      const area = document.createElement("textarea");
+      area.value = String(text);
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      area.remove();
+      if(!ok) throw new Error("copy failed");
+    }
+    showToast("已複製到剪貼簿");
+  }catch(e){
+    showToast("無法自動複製，請顯示內容後手動複製");
+  }
+}
+
+$("searchInput").addEventListener("input", renderRecords);
+$("sortSelect").addEventListener("change", renderRecords);
+
+refreshLoginScreen();
+</script>
+</body>
+</html>
