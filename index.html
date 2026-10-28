@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#070b18">
 <title>NEXUS VAULT｜私人密碼庫</title>
 <style>
@@ -106,6 +106,13 @@ select option{background:#101a30;color:white}
  .stats{gap:6px}.stat{padding:11px 7px}.num{font-size:20px}
  .record-title{font-size:24px}
 }
+@media print{
+ body{background:#fff!important;color:#000!important}
+ .panel{background:#fff!important;border:none!important;box-shadow:none!important}
+ .brand,.footer,.toast,.btn,.data-actions{display:none!important}
+ .detail-table th,.detail-table td{border:1px solid #444!important;color:#000!important;background:#fff!important}
+ .eyebrow,.sub,h2{color:#000!important}
+}
 </style>
 </head>
 <body>
@@ -126,13 +133,13 @@ select option{background:#101a30;color:white}
 
   <form id="loginForm">
     <div id="setupFields">
-      <label for="newPassword">自行設定密碼（至少 8 個字元）</label>
-      <input id="newPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="設定你自己的密碼">
+      <label for="newPassword">自行設定密碼</label>
+      <input id="newPassword" type="password" maxlength="128" autocomplete="new-password" placeholder="設定你自己的密碼">
 
       <label for="confirmPassword">再次輸入密碼</label>
-      <input id="confirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="再次輸入相同密碼">
+      <input id="confirmPassword" type="password" maxlength="128" autocomplete="new-password" placeholder="再次輸入相同密碼">
 
-      <label for="setupEmail">備份 Email（用於忘記密碼找回）</label>
+      <label for="setupEmail">備份 Email（必填，忘記密碼時用於驗證）</label>
       <input id="setupEmail" type="email" placeholder="example@email.com">
     </div>
 
@@ -145,8 +152,8 @@ select option{background:#101a30;color:white}
       <label for="forgotEmail">請輸入您的備份 Email</label>
       <input id="forgotEmail" type="email" placeholder="輸入當初設定的 Email">
 
-      <label for="resetPassword">新密碼（至少 8 個字元）</label>
-      <input id="resetPassword" type="password" minlength="8" maxlength="128" placeholder="設定新密碼">
+      <label for="resetPassword">新密碼</label>
+      <input id="resetPassword" type="password" maxlength="128" placeholder="設定新密碼">
     </div>
 
     <label for="school" id="schoolLabel">指定學校驗證</label>
@@ -184,8 +191,8 @@ select option{background:#101a30;color:white}
   </form>
 
   <div class="notice">
-    ⚠ 本機版本：資料保存在目前裝置的瀏覽器中。請勿清除網站資料，
-    也不要把未加密的敏感密碼交給他人。
+    ⚠ 本機版本：資料以登入密碼加密後保存在目前裝置的瀏覽器中。
+    請勿清除網站資料。忘記密碼時只能重設，原有加密資料將被清除、無法復原，請定期備份。
   </div>
 </section>
 
@@ -245,8 +252,12 @@ select option{background:#101a30;color:white}
           </select>
         </div>
         <div>
-          <label for="changeNewPassword">新密碼（至少 8 個字元）</label>
-          <input id="changeNewPassword" type="password" minlength="8" maxlength="128" placeholder="輸入新密碼" required>
+          <label for="changeNewPassword">新密碼</label>
+          <input id="changeNewPassword" type="password" maxlength="128" placeholder="輸入新密碼" required>
+        </div>
+        <div>
+          <label for="changeConfirmPassword">再次輸入新密碼</label>
+          <input id="changeConfirmPassword" type="password" maxlength="128" placeholder="再次輸入新密碼" required>
         </div>
         <div>
           <label for="changeNewEmail">更新備份 Email（選填）</label>
@@ -301,7 +312,7 @@ select option{background:#101a30;color:white}
     <h2 class="section-title">已保存的項目</h2>
     <p class="sub">可搜尋、排列、查看、複製、修改及刪除資料。</p>
     <div class="toolbar">
-      <input id="searchInput" type="search" placeholder="⌕ 搜尋項目或資料內容">
+      <input id="searchInput" type="search" placeholder="⌕ 搜尋項目名稱（已顯示的欄位也會搜尋）">
       <select id="sortSelect" aria-label="排列方式">
         <option value="newest">最新更新優先</option>
         <option value="oldest">最早建立優先</option>
@@ -357,7 +368,11 @@ select option{background:#101a30;color:white}
 
 const AUTH_KEY = "nexus_vault_auth_v1";
 const STORAGE_KEY = "nexus_vault_records_v1";
-const SCHOOL_ANSWER = "深坑國小";
+const SCHOOL_HASH = "d65d22e65dbf26f2f12e774f6ff4422e136370d53131b028f5b76b23025dd73e";
+const FAIL_KEY = "nexus_vault_fail_v1";
+const PBKDF2_ITER = 200000;
+let cryptoKey = null;
+let loadFailed = false;
 
 const $ = id => document.getElementById(id);
 let records = [];
@@ -365,14 +380,76 @@ let showSecrets = Object.create(null);
 let toastTimer = null;
 let loginMode = "normal";
 
-async function hashPassword(password, salt){
+function bytesToHex(buf){
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+}
+async function sha256Hex(text){
   if(!crypto.subtle || !crypto.getRandomValues){
     throw new Error("此環境不支援 Web Crypto");
   }
-  const data = new TextEncoder().encode(salt + ":" + password);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2,"0")).join("");
+  return bytesToHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
+}
+async function hashPassword(password, salt){
+  return sha256Hex(salt + ":" + password);
+}
+async function schoolOk(value){
+  return value !== "" && (await sha256Hex("nexus-school:" + value)) === SCHOOL_HASH;
+}
+
+/* ===== 加密 ===== */
+async function deriveKey(password, saltHex){
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const salt = new Uint8Array(saltHex.match(/../g).map(h => parseInt(h,16)));
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt:salt, iterations:PBKDF2_ITER, hash:"SHA-256"},
+    base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]
+  );
+}
+function toB64(buf){
+  let str = "";
+  new Uint8Array(buf).forEach(b => str += String.fromCharCode(b));
+  return btoa(str);
+}
+function fromB64(str){
+  return Uint8Array.from(atob(str), c => c.charCodeAt(0));
+}
+async function encryptRecords(list){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:"AES-GCM", iv:iv}, cryptoKey,
+    new TextEncoder().encode(JSON.stringify(list)));
+  return {v:2, iv:toB64(iv), data:toB64(ct)};
+}
+async function decryptRecords(obj){
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:fromB64(obj.iv)}, cryptoKey, fromB64(obj.data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* ===== 失敗次數限制 ===== */
+function getFail(){
+  try{
+    return JSON.parse(localStorage.getItem(FAIL_KEY) || "null") || {n:0,until:0};
+  }catch(e){
+    return {n:0,until:0};
+  }
+}
+function recordFail(){
+  const f = getFail();
+  f.n = (f.n || 0) + 1;
+  if(f.n >= 5){
+    f.until = Date.now() + Math.min(3600, 30 * Math.pow(2, f.n - 5)) * 1000;
+  }
+  try{ localStorage.setItem(FAIL_KEY, JSON.stringify(f)); }catch(e){}
+}
+function clearFail(){
+  try{ localStorage.removeItem(FAIL_KEY); }catch(e){}
+}
+function checkLock(errorEl){
+  const left = Math.ceil(((getFail().until || 0) - Date.now()) / 1000);
+  if(left > 0){
+    errorEl.textContent = "嘗試次數過多，請等待 " + left + " 秒後再試。";
+    return true;
+  }
+  return false;
 }
 
 function getAuth(){
@@ -402,7 +479,7 @@ function refreshLoginScreen(){
     $("loginSubmit").textContent = "設定密碼並進入";
   }else if(loginMode === "forgot"){
     $("loginTitle").textContent = "重設登入密碼";
-    $("loginDescription").textContent = "請輸入備份 Email 及驗證學校來重設密碼。";
+    $("loginDescription").textContent = "請輸入備份 Email 及驗證學校來重設密碼。重設後原有加密資料將被清除。";
     $("loginSubmit").textContent = "確認重設密碼";
   }else{
     $("loginTitle").textContent = "歡迎回到私人密碼庫";
@@ -418,12 +495,14 @@ function randomSalt(){
 
 $("forgotToggleBtn").addEventListener("click", () => {
   loginMode = "forgot";
+  $("loginError").style.color = "";
   $("loginError").textContent = "";
   refreshLoginScreen();
 });
 
 $("backToLoginBtn").addEventListener("click", () => {
   loginMode = "normal";
+  $("loginError").style.color = "";
   $("loginError").textContent = "";
   refreshLoginScreen();
 });
@@ -431,52 +510,66 @@ $("backToLoginBtn").addEventListener("click", () => {
 $("loginForm").addEventListener("submit", async function(e){
   e.preventDefault();
   const error = $("loginError");
+  error.style.color = "";
   error.textContent = "";
-
-  if($("school").value !== SCHOOL_ANSWER){
-    error.textContent = "登入資訊有誤，請重新輸入。";
-    return;
-  }
+  if(checkLock(error)) return;
 
   const button = $("loginSubmit");
   button.disabled = true;
 
   try{
     const auth = getAuth();
+    const schoolPass = await schoolOk($("school").value);
 
     if(!auth){
+      if(!schoolPass){
+        error.textContent = "登入資訊有誤，請重新輸入。";
+        return;
+      }
       const password = $("newPassword").value;
       const confirmPassword = $("confirmPassword").value;
       const email = $("setupEmail").value.trim();
 
-      if(password.length < 8){
-        error.textContent = "密碼至少需要 8 個字元。";
-        button.disabled = false;
+      if(password.length < 1){
+        error.textContent = "請輸入密碼。";
         return;
       }
-
       if(password !== confirmPassword){
         error.textContent = "兩次輸入的密碼不一致。";
-        button.disabled = false;
+        return;
+      }
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+        error.textContent = "請輸入有效的備份 Email（忘記密碼時需要）。";
         return;
       }
 
       const salt = randomSalt();
+      const kdfSalt = randomSalt();
       const passwordHash = await hashPassword(password, salt);
+      cryptoKey = await deriveKey(password, kdfSalt);
+
+      /* 若殘留無法解密的舊加密資料（密碼已遺失），清除之 */
+      try{
+        const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if(raw && !Array.isArray(raw)) localStorage.removeItem(STORAGE_KEY);
+      }catch(x){
+        localStorage.removeItem(STORAGE_KEY);
+      }
 
       localStorage.setItem(AUTH_KEY, JSON.stringify({
         salt: salt,
         passwordHash: passwordHash,
-        email: email
+        email: email,
+        kdfSalt: kdfSalt
       }));
 
       $("newPassword").value = "";
       $("confirmPassword").value = "";
       $("setupEmail").value = "";
+      clearFail();
       refreshLoginScreen();
-      enterApp();
+      await enterApp();
       showToast("自訂密碼已設定並保存");
-      button.disabled = false;
       return;
     }
 
@@ -484,48 +577,59 @@ $("loginForm").addEventListener("submit", async function(e){
       const emailInput = $("forgotEmail").value.trim();
       const newPass = $("resetPassword").value;
 
-      if(!auth.email || emailInput.toLowerCase() !== auth.email.toLowerCase()){
+      if(!schoolPass || !auth.email || emailInput.toLowerCase() !== auth.email.toLowerCase()){
+        recordFail();
         error.textContent = "登入資訊有誤，請重新輸入。";
-        button.disabled = false;
+        return;
+      }
+      if(newPass.length < 1){
+        error.textContent = "請輸入新密碼。";
+        return;
+      }
+      if(!confirm("重設密碼後，原本已加密保存的所有資料將被永久清除，無法復原。確定要繼續嗎？")){
         return;
       }
 
-      if(newPass.length < 8){
-        error.textContent = "新密碼至少需要 8 個字元。";
-        button.disabled = false;
-        return;
-      }
-
+      localStorage.removeItem(STORAGE_KEY);
       const salt = randomSalt();
+      const kdfSalt = randomSalt();
       const passwordHash = await hashPassword(newPass, salt);
 
       localStorage.setItem(AUTH_KEY, JSON.stringify({
         salt: salt,
         passwordHash: passwordHash,
-        email: auth.email
+        email: auth.email,
+        kdfSalt: kdfSalt
       }));
 
       $("forgotEmail").value = "";
       $("resetPassword").value = "";
+      clearFail();
       loginMode = "normal";
       refreshLoginScreen();
       error.style.color = "var(--green)";
-      error.textContent = "密碼已成功重設，請使用新密碼登入。";
-      button.disabled = false;
+      error.textContent = "密碼已重設（原有資料已清除），請使用新密碼登入。";
       return;
     }
 
     const password = $("loginPassword").value;
     const passwordHash = await hashPassword(password, auth.salt);
 
-    if(passwordHash !== auth.passwordHash){
+    if(!schoolPass || passwordHash !== auth.passwordHash){
+      recordFail();
       error.textContent = "登入資訊有誤，請重新輸入。";
-      button.disabled = false;
       return;
     }
 
+    let current = auth;
+    if(!current.kdfSalt){
+      current = Object.assign({}, auth, {kdfSalt: randomSalt()});
+      localStorage.setItem(AUTH_KEY, JSON.stringify(current));
+    }
+    cryptoKey = await deriveKey(password, current.kdfSalt);
+    clearFail();
     $("loginPassword").value = "";
-    enterApp();
+    await enterApp();
 
   }catch(err){
     error.textContent = "系統處理發生錯誤，請稍後再試。";
@@ -538,41 +642,59 @@ $("loginForm").addEventListener("submit", async function(e){
 $("changePasswordForm").addEventListener("submit", async function(e){
   e.preventDefault();
   const error = $("changePwError");
+  error.style.color = "";
   error.textContent = "";
-
-  if($("changeSchool").value !== SCHOOL_ANSWER){
-    error.textContent = "舊密碼或指定學校驗證錯誤。";
-    return;
-  }
+  if(checkLock(error)) return;
 
   const auth = getAuth();
+  if(!auth || !cryptoKey){
+    error.textContent = "請重新登入後再試。";
+    return;
+  }
   const oldPass = $("oldPassword").value;
   const newPass = $("changeNewPassword").value;
+  const confirmNew = $("changeConfirmPassword").value;
   const newEmail = $("changeNewEmail").value.trim();
 
   try{
     const oldHash = await hashPassword(oldPass, auth.salt);
-    if(oldHash !== auth.passwordHash){
-      error.textContent = "舊密碼錯誤，請重新輸入。";
+    if(!(await schoolOk($("changeSchool").value)) || oldHash !== auth.passwordHash){
+      recordFail();
+      error.textContent = "舊密碼或指定學校驗證錯誤。";
       return;
     }
-
-    if(newPass.length < 8){
-      error.textContent = "新密碼至少需要 8 個字元。";
+    if(newPass.length < 1){
+      error.textContent = "請輸入新密碼。";
+      return;
+    }
+    if(newPass !== confirmNew){
+      error.textContent = "兩次輸入的新密碼不一致。";
       return;
     }
 
     const salt = randomSalt();
+    const kdfSalt = randomSalt();
     const newHash = await hashPassword(newPass, salt);
+    const oldKey = cryptoKey;
+    cryptoKey = await deriveKey(newPass, kdfSalt);
+
+    if(!(await persist())){
+      cryptoKey = oldKey;
+      error.textContent = "修改密碼失敗。";
+      return;
+    }
 
     localStorage.setItem(AUTH_KEY, JSON.stringify({
       salt: salt,
       passwordHash: newHash,
-      email: newEmail ? newEmail : auth.email
+      email: newEmail ? newEmail : auth.email,
+      kdfSalt: kdfSalt
     }));
 
+    clearFail();
     $("oldPassword").value = "";
     $("changeNewPassword").value = "";
+    $("changeConfirmPassword").value = "";
     $("changeNewEmail").value = "";
     $("changeSchool").value = "";
     showToast("密碼已成功修改！");
@@ -582,21 +704,36 @@ $("changePasswordForm").addEventListener("submit", async function(e){
 });
 
 /* ===== 資料庫 ===== */
-function loadRecords(){
+async function loadRecords(){
+  loadFailed = false;
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    records = Array.isArray(parsed)
-      ? parsed.filter(r => r && typeof r.id === "string" && typeof r.name === "string")
+    let list = [];
+    let legacy = false;
+    if(Array.isArray(parsed)){
+      list = parsed;
+      legacy = parsed.length > 0;
+    }else if(parsed && parsed.iv && parsed.data){
+      list = await decryptRecords(parsed);
+    }
+    records = Array.isArray(list)
+      ? list.filter(r => r && typeof r.id === "string" && typeof r.name === "string")
       : [];
+    if(legacy) await persist();   /* 舊版明文資料自動升級為加密 */
   }catch(e){
     records = [];
+    loadFailed = true;
   }
 }
 
-function persist(){
+async function persist(){
+  if(loadFailed){
+    alert("資料解密失敗，為避免覆蓋原有資料，已停止儲存。");
+    return false;
+  }
   try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(await encryptRecords(records)));
     return true;
   }catch(e){
     alert("儲存失敗，請檢查裝置儲存空間。");
@@ -604,23 +741,36 @@ function persist(){
   }
 }
 
-function enterApp(){
+async function enterApp(){
+  await loadRecords();
   $("loginScreen").classList.add("hidden");
   $("appScreen").classList.remove("hidden");
   $("detailScreen").classList.add("hidden");
-  loadRecords();
   renderRecords();
   window.scrollTo(0,0);
+  if(loadFailed) showToast("資料解密失敗，請確認登入密碼");
 }
 
 $("lockBtn").addEventListener("click", function(){
   resetForm();
   showSecrets = Object.create(null);
+  records = [];
+  cryptoKey = null;
+  loadFailed = false;
+  $("recordList").innerHTML = "";
+  $("detailTableBody").innerHTML = "";
+  $("searchInput").value = "";
+  $("totalCount").textContent = "0";
+  $("todayCount").textContent = "0";
+  ["oldPassword","changeNewPassword","changeConfirmPassword","changeNewEmail","changeSchool",
+   "newPassword","confirmPassword","setupEmail","forgotEmail","resetPassword","loginPassword","school"]
+    .forEach(id => { $(id).value = ""; });
+  $("changePwError").textContent = "";
+  resetPasswordToggles();
   $("appScreen").classList.add("hidden");
   $("detailScreen").classList.add("hidden");
   $("loginScreen").classList.remove("hidden");
-  $("school").value = "";
-  $("loginPassword").value = "";
+  $("loginError").style.color = "";
   $("loginError").textContent = "";
   loginMode = "normal";
   refreshLoginScreen();
@@ -638,6 +788,14 @@ $("cancelBtn").addEventListener("click", resetForm);
 
 function todayStamp(){
   const d = new Date();
+  return String(d.getFullYear()) +
+    String(d.getMonth()+1).padStart(2,"0") +
+    String(d.getDate()).padStart(2,"0");
+}
+
+function localStamp(iso){
+  const d = new Date(iso);
+  if(Number.isNaN(d.getTime())) return "";
   return String(d.getFullYear()) +
     String(d.getMonth()+1).padStart(2,"0") +
     String(d.getDate()).padStart(2,"0");
@@ -665,7 +823,7 @@ function showToast(message){
 }
 
 /* ===== 新增與修改 ===== */
-$("recordForm").addEventListener("submit", function(e){
+$("recordForm").addEventListener("submit", async function(e){
   e.preventDefault();
 
   const name = $("itemName").value.trim();
@@ -715,8 +873,8 @@ $("recordForm").addEventListener("submit", function(e){
     });
   }
 
-  if(!persist()){
-    loadRecords();
+  if(!(await persist())){
+    await loadRecords();
     renderRecords();
     return;
   }
@@ -735,10 +893,13 @@ function formatDate(iso){
 
 function getVisibleRecords(){
   const query = $("searchInput").value.trim().toLowerCase();
-  const list = records.filter(r =>
-    [r.name, r.field1, r.field2, r.field3]
-      .join(" ").toLowerCase().includes(query)
-  );
+  const list = records.filter(r => {
+    const parts = [r.name];
+    ["field1","field2","field3"].forEach(k => {
+      if(showSecrets[r.id + "_" + k]) parts.push(r[k]);
+    });
+    return parts.join(" ").toLowerCase().includes(query);
+  });
 
   const sort = $("sortSelect").value;
   if(sort === "newest"){
@@ -781,7 +942,7 @@ function renderRecords(){
 
   const today = todayStamp();
   $("todayCount").textContent = records.filter(r =>
-    String(r.createdAt || "").slice(0,10).replace(/-/g,"") === today
+    localStamp(r.createdAt) === today
   ).length;
 
   if(list.length === 0){
@@ -851,10 +1012,12 @@ function renderDetailTable(){
 }
 
 $("printBtn").addEventListener("click", () => {
+  if(!confirm("列印／PDF 內容為未加密的明文，請確認環境安全。要繼續嗎？")) return;
   window.print();
 });
 
 $("exportJsonBtn").addEventListener("click", () => {
+  if(!confirm("備份檔為未加密的明文 JSON，請妥善保管。要繼續匯出嗎？")) return;
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
   const dlAnchor = document.createElement('a');
   dlAnchor.setAttribute("href", dataStr);
@@ -917,7 +1080,7 @@ $("recordList").addEventListener("click", async function(e){
     const oldRecords = records.slice();
     records = records.filter(r => r.id !== id);
 
-    if(!persist()){
+    if(!(await persist())){
       records = oldRecords;
       renderRecords();
       return;
@@ -954,6 +1117,29 @@ async function copyText(text){
 
 $("searchInput").addEventListener("input", renderRecords);
 $("sortSelect").addEventListener("change", renderRecords);
+
+/* ===== 密碼欄位「顯示密碼」切換 ===== */
+document.querySelectorAll('input[type="password"]').forEach(function(input){
+  input.dataset.pw = "1";
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "link-btn";
+  toggle.textContent = "顯示密碼";
+  toggle.addEventListener("click", function(){
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    toggle.textContent = show ? "隱藏密碼" : "顯示密碼";
+  });
+  input.insertAdjacentElement("afterend", toggle);
+});
+
+function resetPasswordToggles(){
+  document.querySelectorAll("input[data-pw]").forEach(function(input){
+    input.type = "password";
+    const t = input.nextElementSibling;
+    if(t) t.textContent = "顯示密碼";
+  });
+}
 
 refreshLoginScreen();
 </script>
